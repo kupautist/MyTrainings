@@ -11,7 +11,7 @@ from IPython.display import clear_output, display
 from data_io import ensure_directories, load_exercises, load_trainings, normalize_trainings, save_trainings
 
 
-DEFAULT_BODYWEIGHT = 69.0
+DEFAULT_BODYWEIGHT = 73
 
 
 def recompute_e1rm_one(weight: float, reps: float) -> float:
