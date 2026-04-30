@@ -3,15 +3,20 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import ipywidgets as widgets
 import numpy as np
 import pandas as pd
-import ipywidgets as widgets
 from IPython.display import clear_output, display
 
-from data_io import ensure_directories, load_exercises, load_trainings, normalize_trainings, save_trainings
+from data_io import (
+    ensure_directories,
+    load_exercises,
+    load_trainings,
+    normalize_trainings,
+    save_trainings,
+)
 
-
-DEFAULT_BODYWEIGHT = 73
+DEFAULT_BODYWEIGHT = 69.0
 
 
 def recompute_e1rm_one(weight: float, reps: float) -> float:
@@ -27,9 +32,11 @@ def parse_ids(text: str) -> list[int]:
 
     parts = re.split(r'[,\s;]+', text)
     result: list[int] = []
+
     for part in parts:
         if not part:
             continue
+
         if '-' in part:
             a_raw, b_raw = part.split('-', 1)
             a = int(a_raw)
@@ -38,6 +45,7 @@ def parse_ids(text: str) -> list[int]:
             result.extend(range(lo, hi + 1))
         else:
             result.append(int(part))
+
     return sorted(set(result))
 
 
@@ -45,7 +53,13 @@ def norm_line(text: str) -> str:
     return text.strip().replace('×', 'x').replace('*', 'x').replace('X', 'x').replace(' ', '')
 
 
-def parse_bulk_line(line: str, *, bodyweight_mode: bool, bodyweight: float, add_w_default: float) -> list[tuple[float, float, float]] | None:
+def parse_bulk_line(
+    line: str,
+    *,
+    bodyweight_mode: bool,
+    bodyweight: float,
+    add_w_default: float,
+) -> list[tuple[float, float, float]] | None:
     normalized = norm_line(line).lower()
     if not normalized:
         return None
@@ -57,7 +71,10 @@ def parse_bulk_line(line: str, *, bodyweight_mode: bool, bodyweight: float, add_
             reps = float(match.group(2))
             return [(1.0, bodyweight + add_weight, reps)]
 
-        match = re.fullmatch(r'(\d+(?:\.\d+)?)x\(\+(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)\)', normalized)
+        match = re.fullmatch(
+            r'(\d+(?:\.\d+)?)x\(\+(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)\)',
+            normalized,
+        )
         if match:
             sets = float(match.group(1))
             add_weight = float(match.group(2))
@@ -94,7 +111,6 @@ def parse_bulk_line(line: str, *, bodyweight_mode: bool, bodyweight: float, add_
 
 def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = None) -> widgets.VBox:
     ensure_directories()
-
     trainings_df = normalize_trainings(load_trainings() if trainings_csv is None else load_trainings(trainings_csv))
     exercises_df = load_exercises()
 
@@ -119,6 +135,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
     delete_btn = widgets.Button(description='Удалить выбранные', button_style='danger')
 
     date_picker = widgets.DatePicker(description='Date')
+
     exercise_dropdown = widgets.Dropdown(
         options=sorted(exercises_df['exercise'].dropna().astype(str).unique().tolist()),
         description='Exercise',
@@ -171,27 +188,44 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         dates = df['date'].dropna()
         return list(pd.Series(dates.unique()).sort_values(ascending=False))
 
+    def find_date_index(date_value: pd.Timestamp) -> int | None:
+        selected_date = pd.Timestamp(date_value).normalize()
+        for pos, existing_date in enumerate(get_dates()):
+            if pd.Timestamp(existing_date).normalize() == selected_date:
+                return pos
+        return None
+
+    def day_df_for_date(date_value: pd.Timestamp) -> pd.DataFrame:
+        selected_date = pd.Timestamp(date_value).normalize()
+        day_df = df[df['date'] == selected_date].copy().sort_values(['_row_id'], ascending=False)
+        day_df['shown_id'] = np.arange(len(day_df))
+        state['current_day_map'] = day_df[['shown_id', '_row_id']].copy()
+        return day_df
+
     def current_day_df() -> tuple[pd.DataFrame, pd.Timestamp | None]:
         dates = get_dates()
         if not dates:
+            state['current_day_map'] = pd.DataFrame(columns=['shown_id', '_row_id'])
             return pd.DataFrame(), None
-        current_date = pd.Timestamp(dates[int(state['i'])])
-        day_df = df[df['date'] == current_date].copy().sort_values(['_row_id'], ascending=False)
-        day_df['shown_id'] = np.arange(len(day_df))
-        state['current_day_map'] = day_df[['shown_id', '_row_id']].copy()
+
+        state['i'] = int(state['i']) % len(dates)
+        current_date = pd.Timestamp(dates[int(state['i'])]).normalize()
+        day_df = day_df_for_date(current_date)
         return day_df, current_date
 
     def render(message: str = '') -> None:
         with out:
             clear_output(wait=True)
-
             dates = get_dates()
             if not dates:
                 header.value = '<h3>Датасет пуст</h3>'
                 status.value = message
+                state['current_day_map'] = pd.DataFrame(columns=['shown_id', '_row_id'])
                 return
 
             day_df, current_date = current_day_df()
+            assert current_date is not None
+
             header.value = f"<h3>[{int(state['i']) + 1}/{len(dates)}] {current_date.date()}</h3>"
             status.value = f"<span style='color:#888'>{message}</span>" if message else ''
 
@@ -202,13 +236,27 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
             display(day_df[['shown_id'] + display_cols].reset_index(drop=True))
 
     def show_date(date_value: pd.Timestamp) -> None:
+        selected_date = pd.Timestamp(date_value).normalize()
+        dates = get_dates()
+        selected_pos = find_date_index(selected_date)
+
+        if selected_pos is not None:
+            state['i'] = selected_pos
+
         with out:
             clear_output(wait=True)
-            day_df = df[df['date'] == date_value.normalize()].copy().sort_values(['_row_id'], ascending=False)
+            day_df = day_df_for_date(selected_date)
+
+            if selected_pos is None:
+                header.value = f"<h3>[новая дата/{len(dates)}] {selected_date.date()}</h3>"
+            else:
+                header.value = f"<h3>[{selected_pos + 1}/{len(dates)}] {selected_date.date()}</h3>"
+
             if day_df.empty:
+                display(pd.DataFrame(columns=['shown_id'] + display_cols))
                 print('На эту дату записей нет.')
                 return
-            day_df['shown_id'] = np.arange(len(day_df))
+
             display(day_df[['shown_id'] + display_cols].reset_index(drop=True))
 
     def chosen_exercise() -> str:
@@ -226,8 +274,8 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
     def add_rows(rows: list[tuple[float, float, float, str, pd.Timestamp]]) -> None:
         nonlocal df
         next_id = 0 if df.empty else int(df['_row_id'].max() + 1)
-
         new_rows: list[dict[str, object]] = []
+
         for sets, weight, reps, exercise_name, date_value in rows:
             new_rows.append(
                 {
@@ -250,6 +298,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         dates = get_dates()
         if not dates:
             return
+
         state['i'] = (int(state['i']) - 1) % len(dates)
         render()
 
@@ -257,6 +306,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         dates = get_dates()
         if not dates:
             return
+
         state['i'] = (int(state['i']) + 1) % len(dates)
         render()
 
@@ -287,7 +337,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
             return
 
         current_map = state['current_day_map']
-        if current_map is None or current_map.empty:
+        if not isinstance(current_map, pd.DataFrame) or current_map.empty:
             render('Нечего удалять')
             return
 
@@ -337,8 +387,8 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         exercise_name = chosen_exercise()
         bodyweight_mode = bool(add_bodyweight.value)
         add_weight_default = float(weight_in.value) if bodyweight_mode else 0.0
-
         lines = [line for line in bulk.value.splitlines() if line.strip()]
+
         added = 0
         bad_lines: list[str] = []
         rows_to_add: list[tuple[float, float, float, str, pd.Timestamp]] = []
@@ -353,6 +403,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
             if parsed is None:
                 bad_lines.append(line)
                 continue
+
             for sets, weight, reps in parsed:
                 rows_to_add.append((sets, weight, reps, exercise_name, pd.Timestamp(selected_date)))
                 added += 1
@@ -363,6 +414,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         message = f'<b style="color:#2a2">Добавлено строк:</b> {added}'
         if bad_lines:
             message += f' | <b style="color:#d33">Не распарсилось:</b> {bad_lines}'
+
         status.value = message
         show_date(pd.Timestamp(selected_date))
 
@@ -371,6 +423,14 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
         if selected_date is None:
             status.value = '<b style="color:#d33">Выбери дату</b>'
             return
+
+        show_date(pd.Timestamp(selected_date))
+
+    def on_date_changed(change: dict[str, object]) -> None:
+        selected_date = change.get('new')
+        if selected_date is None:
+            return
+
         show_date(pd.Timestamp(selected_date))
 
     def on_save(_: widgets.Button) -> None:
@@ -385,6 +445,7 @@ def main(bodyweight: float = DEFAULT_BODYWEIGHT, trainings_csv: Path | None = No
     btn_add_one.on_click(on_add_one)
     btn_add_bulk.on_click(on_add_bulk)
     btn_show_day.on_click(on_show_day)
+    date_picker.observe(on_date_changed, names='value')
 
     app = widgets.VBox(
         [
