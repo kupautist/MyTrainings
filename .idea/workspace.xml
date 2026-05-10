@@ -4,10 +4,8 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment=".ipynb to .py demo">
+    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment="data synchronization">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/additionDeletion.py" beforeDir="false" afterPath="$PROJECT_DIR$/additionDeletion.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/data/trainings.csv" beforeDir="false" afterPath="$PROJECT_DIR$/data/trainings.csv" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -40,6 +38,7 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.exercise_window.executor&quot;: &quot;Run&quot;,
     &quot;Python.visualization.executor&quot;: &quot;Run&quot;,
     &quot;Python.wet.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
@@ -48,6 +47,35 @@
     &quot;last_opened_file_path&quot;: &quot;C:/Users/kupautist/PycharmProjects/MyTrainings&quot;
   }
 }</component>
+  <component name="RunManager">
+    <configuration name="exercise_window" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="MyTrainings" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/exercise_window.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.exercise_window" />
+      </list>
+    </recent_temporary>
+  </component>
   <component name="SharedIndexes">
     <attachedChunks>
       <set>
@@ -79,11 +107,38 @@
       <option name="project" value="LOCAL" />
       <updated>1774720954000</updated>
     </task>
-    <option name="localTasksCounter" value="3" />
+    <task id="LOCAL-00003" summary="Не помню уж">
+      <option name="closed" value="true" />
+      <created>1777570758589</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1777570758589</updated>
+    </task>
+    <task id="LOCAL-00004" summary="Fix stale date view in additionDeletion&#10;&#10;Update show_date() to refresh header, selected date index, and current_day_map so adding or showing another date does not leave the old day displayed or affect deletes.">
+      <option name="closed" value="true" />
+      <created>1777571201776</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1777571201776</updated>
+    </task>
+    <task id="LOCAL-00005" summary="data synchronization">
+      <option name="closed" value="true" />
+      <created>1778412057295</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1778412057295</updated>
+    </task>
+    <option name="localTasksCounter" value="6" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value=".ipynb to .py demo" />
-    <option name="LAST_COMMIT_MESSAGE" value=".ipynb to .py demo" />
+    <MESSAGE value="Не помню уж" />
+    <MESSAGE value="Fix stale date view in additionDeletion&#10;&#10;Update show_date() to refresh header, selected date index, and current_day_map so adding or showing another date does not leave the old day displayed or affect deletes." />
+    <MESSAGE value="data synchronization" />
+    <option name="LAST_COMMIT_MESSAGE" value="data synchronization" />
   </component>
 </project>
