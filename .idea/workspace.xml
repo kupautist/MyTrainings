@@ -4,8 +4,12 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment="data synchronization">
+    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment="exercise progress via tkinter">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/exercises.csv" beforeDir="false" afterPath="$PROJECT_DIR$/data/exercises.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/data/trainings.csv" beforeDir="false" afterPath="$PROJECT_DIR$/data/trainings.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -38,8 +42,11 @@
   <component name="PropertiesComponent">{
   &quot;keyToString&quot;: {
     &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.exerciseProgress.executor&quot;: &quot;Run&quot;,
+    &quot;Python.exerciseProgress_rewritten.executor&quot;: &quot;Run&quot;,
     &quot;Python.exercise_window.executor&quot;: &quot;Run&quot;,
     &quot;Python.visualization.executor&quot;: &quot;Run&quot;,
+    &quot;Python.web_app.executor&quot;: &quot;Run&quot;,
     &quot;Python.wet.executor&quot;: &quot;Run&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
@@ -47,7 +54,51 @@
     &quot;last_opened_file_path&quot;: &quot;C:/Users/kupautist/PycharmProjects/MyTrainings&quot;
   }
 }</component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.web_app">
+    <configuration name="exerciseProgress" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="MyTrainings" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/exerciseProgress.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="exerciseProgress_rewritten" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="MyTrainings" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/exerciseProgress_rewritten.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="exercise_window" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="MyTrainings" />
       <option name="ENV_FILES" value="" />
@@ -70,8 +121,33 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="web_app" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="MyTrainings" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/web_app.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.web_app" />
+        <item itemvalue="Python.exerciseProgress" />
+        <item itemvalue="Python.exerciseProgress_rewritten" />
         <item itemvalue="Python.exercise_window" />
       </list>
     </recent_temporary>
@@ -131,7 +207,31 @@
       <option name="project" value="LOCAL" />
       <updated>1778412057295</updated>
     </task>
-    <option name="localTasksCounter" value="6" />
+    <task id="LOCAL-00006" summary="File for tracking each exersize individually">
+      <option name="closed" value="true" />
+      <created>1778428555942</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1778428555942</updated>
+    </task>
+    <task id="LOCAL-00007" summary="File for tracking each exersize individually">
+      <option name="closed" value="true" />
+      <created>1778428599143</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1778428599143</updated>
+    </task>
+    <task id="LOCAL-00008" summary="exercise progress via tkinter">
+      <option name="closed" value="true" />
+      <created>1778669193401</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1778669193401</updated>
+    </task>
+    <option name="localTasksCounter" value="9" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -139,6 +239,9 @@
     <MESSAGE value="Не помню уж" />
     <MESSAGE value="Fix stale date view in additionDeletion&#10;&#10;Update show_date() to refresh header, selected date index, and current_day_map so adding or showing another date does not leave the old day displayed or affect deletes." />
     <MESSAGE value="data synchronization" />
-    <option name="LAST_COMMIT_MESSAGE" value="data synchronization" />
+    <MESSAGE value="File for tracking each exercise individually" />
+    <MESSAGE value="File for tracking each exersize individually" />
+    <MESSAGE value="exercise progress via tkinter" />
+    <option name="LAST_COMMIT_MESSAGE" value="exercise progress via tkinter" />
   </component>
 </project>

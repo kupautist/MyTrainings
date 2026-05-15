@@ -1,4 +1,4 @@
-exercise,chest,upper_chest,front_delts,lateral_delts,rear_delts,triceps,biceps,forearms,lats,upper_back,traps,erectors,core,quads,hamstrings,glutes,adductors,abs,obliques,hip_flexors,sum,difficulty_coeff
+﻿exercise,chest,upper_chest,front_delts,lateral_delts,rear_delts,triceps,biceps,forearms,lats,upper_back,traps,erectors,core,quads,hamstrings,glutes,adductors,abs,obliques,hip_flexors,sum,difficulty_coeff
 Бабочка,0.75,0.0,0.2,0.0,0.0,0.0,0.05,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.7254464285714286
 Бабочка обратная,0.0,0.0,0.0,0.0,0.55,0.0,0.0,0.0,0.0,0.25,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,0.9961685823754788
 Бицепс,0.0,0.0,0.0,0.0,0.0,0.0,0.8,0.2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,1.0,1.9097222222222223

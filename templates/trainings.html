@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block content %}
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<section class="card">
+    <div class="toolbar">
+        <a class="button button--secondary" href="{{ url_for('trainings_page', date=format_date(prev_date)) if prev_date else '#' }}">← Назад</a>
+        <form method="get" class="toolbar__form">
+            <label>Дата</label>
+            <input type="date" name="date" value="{{ selected_date_html }}">
+            <button type="submit">Показать</button>
+        </form>
+        <a class="button button--secondary" href="{{ url_for('trainings_page', date=format_date(next_date)) if next_date else '#' }}">Дальше →</a>
+        <span class="muted">{% if current_index is not none %}{{ current_index + 1 }}/{{ dates_count }}{% else %}новая дата{% endif %}</span>
+    </div>
+
+    <form method="post">
+        <input type="hidden" name="action" value="delete">
+        <input type="hidden" name="date" value="{{ selected_date_html }}">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        {% for column in columns %}<th>{{ column }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in rows %}
+                        <tr>
+                            <td><input type="checkbox" name="row_id" value="{{ row['_row_id'] }}"></td>
+                            {% for column in columns %}
+                                <td>{% if column == 'exercise' %}{{ row[column] }}{% else %}{{ format_number(row[column]) }}{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="{{ columns|length + 1 }}" class="muted">На эту дату записей нет.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div class="form-actions">
+            <button type="button" class="button button--secondary" onclick="setCheckboxes('row_id', true)">All</button>
+            <button type="button" class="button button--secondary" onclick="setCheckboxes('row_id', false)">None</button>
+            <button type="submit" class="button button--danger">Удалить выбранные</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h2>Добавление</h2>
+    <form method="post" class="stacked-form" id="add-training-form">
+        <div class="form-grid">
+            <label>Дата
+                <input type="date" name="date" value="{{ form_state.date }}" required>
+            </label>
+            <label>Упражнение
+                <select name="exercise">
+                    {% for exercise in exercises %}
+                        <option value="{{ exercise }}" {% if exercise == form_state.exercise %}selected{% endif %}>{{ exercise }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label>Новое упражнение
+                <input type="text" name="new_exercise" value="{{ form_state.new_exercise }}" placeholder="если нет в списке">
+            </label>
+        </div>
+
+        <label>Подходы
+            <textarea name="bulk" rows="8" placeholder="80x3&#10;3x85x2&#10;5x(60x5)">{{ form_state.bulk }}</textarea>
+        </label>
+        <p class="muted help-text">Форматы: <b>80x3</b> = 1 подход 80×3, <b>3x85x2</b> = 3 подхода 85×2, <b>5x(60x5)</b> = 5 подходов 60×5.</p>
+        <div class="form-actions compact-actions">
+            <button type="submit" name="action" value="add_bulk">Добавить</button>
+        </div>
+    </form>
+</section>
+{% endblock %}

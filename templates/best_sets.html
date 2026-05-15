@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <form method="get" class="toolbar__form" id="best-sets-form">
+        <label>Упражнение</label>
+        <select name="exercise" onchange="this.form.submit()">
+            {% for exercise in exercises %}<option value="{{ exercise }}" {% if exercise == selected %}selected{% endif %}>{{ exercise }}</option>{% endfor %}
+        </select>
+    </form>
+</section>
+
+<section class="card">
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>{% for column in columns %}<th>{{ column }}</th>{% endfor %}</tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                    <tr>
+                        {% for column in columns %}
+                            <td>{% if column == 'date' %}{{ format_date(row[column]) }}{% else %}{{ format_number(row[column]) }}{% endif %}</td>
+                        {% endfor %}
+                    </tr>
+                {% else %}
+                    <tr><td colspan="{{ columns|length }}" class="muted">Нет подходов.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

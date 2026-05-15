@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="grid grid--cards">
+    {% for label, value in stats.items() %}
+        <article class="card stat-card">
+            <div class="stat-card__label">{{ label }}</div>
+            <div class="stat-card__value">{{ value }}</div>
+        </article>
+    {% endfor %}
+</section>
+
+
+<section class="card">
+    <div class="section-title">
+        <h2>Разделы</h2>
+        <span class="muted">что где лежит</span>
+    </div>
+    <div class="section-grid">
+        {% for item in section_descriptions %}
+            <a class="section-card" href="{{ url_for(item.endpoint) }}">
+                <h3>{{ item.title }}</h3>
+                <p>{{ item.text }}</p>
+            </a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="card">
+    <div class="section-title">
+        <h2>Последняя тренировка</h2>
+        {% if latest_date %}<span>{{ format_date(latest_date) }}</span>{% endif %}
+    </div>
+    {% if latest_rows %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        {% for column in latest_columns %}<th>{{ column }}</th>{% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in latest_rows %}
+                        <tr>
+                            {% for column in latest_columns %}
+                                <td>{% if column == 'date' %}{{ format_date(row[column]) }}{% else %}{{ format_number(row[column]) if column not in ['exercise'] else row[column] }}{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="muted">Пока нет записей.</p>
+    {% endif %}
+</section>
+{% endblock %}

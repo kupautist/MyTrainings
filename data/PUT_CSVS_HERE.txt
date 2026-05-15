@@ -1,0 +1,1 @@
+Сюда положить exercises.csv, trainings.csv и muscle_groups.csv

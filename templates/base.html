@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MyTrainings — {{ title }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="brand">
+            <img class="brand__photo" src="{{ url_for('static', filename='neuro_unitaz_photo.png') }}" alt="NeuroUnitaz Develop">
+            <div>
+                <div class="brand__name">MyTrainings</div>
+                <div class="brand__sub">NeuroUnitaz Develop</div>
+            </div>
+        </div>
+        <nav class="nav">
+            {% for endpoint, label in nav_items %}
+                <a class="nav__link {% if active == endpoint %}nav__link--active{% endif %}" href="{{ url_for(endpoint) }}">{{ label }}</a>
+            {% endfor %}
+        </nav>
+    </aside>
+
+    <main class="main">
+        <header class="page-header">
+            <div>
+                <p class="eyebrow">MyTrainings</p>
+                <h1>{{ title }}</h1>
+            </div>
+        </header>
+        {% block content %}{% endblock %}
+    </main>
+
+    <script>
+        function setCheckboxes(name, checked) {
+            document.querySelectorAll('input[type="checkbox"][name="' + name + '"]').forEach(function (item) {
+                item.checked = checked;
+            });
+        }
+
+        function syncRangeLabels(prefix, dates) {
+            const start = document.getElementById(prefix + '-start');
+            const end = document.getElementById(prefix + '-end');
+            const startLabel = document.getElementById(prefix + '-start-label');
+            const endLabel = document.getElementById(prefix + '-end-label');
+            if (!start || !end || !startLabel || !endLabel || !dates.length) {
+                return;
+            }
+            function update() {
+                let s = parseInt(start.value, 10);
+                let e = parseInt(end.value, 10);
+                if (s > e) {
+                    const temp = s;
+                    s = e;
+                    e = temp;
+                }
+                startLabel.textContent = dates[s] || '';
+                endLabel.textContent = dates[e] || '';
+            }
+            start.addEventListener('input', update);
+            end.addEventListener('input', update);
+            update();
+        }
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

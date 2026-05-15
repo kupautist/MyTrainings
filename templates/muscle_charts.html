@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <form method="get" class="stacked-form">
+        <input type="hidden" name="submitted" value="1">
+        {% if dates_count > 0 %}
+            <div class="range-row">
+                <label>Начало <span id="muscle-start-label" class="date-label"></span>
+                    <input id="muscle-start" type="range" name="start_i" min="0" max="{{ dates_count - 1 }}" value="{{ start_i }}">
+                </label>
+                <label>Конец <span id="muscle-end-label" class="date-label"></span>
+                    <input id="muscle-end" type="range" name="end_i" min="0" max="{{ dates_count - 1 }}" value="{{ end_i }}">
+                </label>
+            </div>
+        {% endif %}
+
+        <div class="form-grid">
+            <label>Метрика
+                <select name="metric">
+                    {% for key, label in muscle_metrics.items() %}<option value="{{ key }}" {% if key == metric %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Режим
+                <select name="mode">
+                    {% for key, label in muscle_modes.items() %}<option value="{{ key }}" {% if key == mode %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                </select>
+            </label>
+            <label>Smooth ± дней
+                <input type="number" name="smooth" min="0" step="1" value="{{ smooth_window }}">
+            </label>
+            <label class="checkbox-line"><input type="checkbox" name="show_points" value="1" {% if show_points %}checked{% endif %}> исходные точки</label>
+            <label class="checkbox-line"><input type="checkbox" name="show_mean" value="1" {% if show_mean %}checked{% endif %}> средняя линия</label>
+        </div>
+
+        <h3>Группы</h3>
+        <div class="mini-actions">
+            <button type="button" class="button button--secondary" onclick="setCheckboxes('group', true)">All</button>
+            <button type="button" class="button button--secondary" onclick="setCheckboxes('group', false)">None</button>
+        </div>
+        <div class="checkbox-grid">
+            {% for group in groups %}
+                <label class="checkbox-line"><input type="checkbox" name="group" value="{{ group }}" {% if group in selected_groups %}checked{% endif %}> {{ group }}</label>
+            {% endfor %}
+        </div>
+        <div class="form-actions"><button type="submit">Построить</button></div>
+    </form>
+</section>
+
+<section class="card chart-card">
+    <p class="muted">{{ chart.message }}</p>
+    {% if chart.image %}<img class="chart" src="data:image/png;base64,{{ chart.image }}" alt="График мышц">{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>syncRangeLabels('muscle', {{ dates_json|tojson }});</script>
+{% endblock %}

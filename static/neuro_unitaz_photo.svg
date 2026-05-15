@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320" role="img" aria-label="NeuroUnitaz Develop">
+  <rect width="320" height="320" fill="#000"/>
+  <circle cx="160" cy="122" r="56" fill="#fff"/>
+  <path d="M68 304c10-72 54-112 92-112s82 40 92 112" fill="#fff"/>
+  <text x="160" y="292" font-family="Arial, sans-serif" font-size="32" font-weight="800" text-anchor="middle" fill="#000">NU</text>
+</svg>

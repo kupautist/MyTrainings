@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="card">
+    <form method="get" class="stacked-form">
+        <input type="hidden" name="submitted" value="1">
+        {% if dates_count > 0 %}
+            <div class="range-row">
+                <label>Начало <span id="exercise-start-label" class="date-label"></span>
+                    <input id="exercise-start" type="range" name="start_i" min="0" max="{{ dates_count - 1 }}" value="{{ start_i }}">
+                </label>
+                <label>Конец <span id="exercise-end-label" class="date-label"></span>
+                    <input id="exercise-end" type="range" name="end_i" min="0" max="{{ dates_count - 1 }}" value="{{ end_i }}">
+                </label>
+            </div>
+        {% endif %}
+
+        <div class="control-columns">
+            <div>
+                <h3>Метрики</h3>
+                {% for metric in metrics %}
+                    <label class="checkbox-line"><input type="checkbox" name="metric" value="{{ metric.key }}" {% if metric.key in selected_metrics %}checked{% endif %}> {{ metric.title }}</label>
+                {% endfor %}
+                <div class="mini-actions">
+                    <button type="button" class="button button--secondary" onclick="setCheckboxes('metric', true)">All</button>
+                    <button type="button" class="button button--secondary" onclick="setCheckboxes('metric', false)">None</button>
+                </div>
+
+                <h3>Отображение</h3>
+                <label class="checkbox-line"><input type="checkbox" name="show_points" value="1" {% if show_points %}checked{% endif %}> исходные точки</label>
+                <label class="checkbox-line"><input type="checkbox" name="show_smooth" value="1" {% if show_smooth %}checked{% endif %}> smooth</label>
+                <label>Smooth ± дней
+                    <input type="number" name="smooth" min="0" step="1" value="{{ smooth_days }}">
+                </label>
+                <label class="checkbox-line"><input type="checkbox" name="show_mean" value="1" {% if show_mean %}checked{% endif %}> средняя линия</label>
+            </div>
+
+            <div>
+                <h3>Упражнения</h3>
+                <div class="mini-actions">
+                    <button type="button" class="button button--secondary" onclick="setCheckboxes('exercise', true)">All</button>
+                    <button type="button" class="button button--secondary" onclick="setCheckboxes('exercise', false)">None</button>
+                </div>
+                <div class="checkbox-grid">
+                    {% for exercise in exercises %}
+                        <label class="checkbox-line"><input type="checkbox" name="exercise" value="{{ exercise }}" {% if exercise in selected_exercises %}checked{% endif %}> {{ exercise }}</label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="form-actions"><button type="submit">Построить</button></div>
+    </form>
+</section>
+
+<section class="card chart-card">
+    <p class="muted">{{ chart.message }}</p>
+    {% if chart.image %}<img class="chart" src="data:image/png;base64,{{ chart.image }}" alt="График упражнений">{% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>syncRangeLabels('exercise', {{ dates_json|tojson }});</script>
+{% endblock %}
