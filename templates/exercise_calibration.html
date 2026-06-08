@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% block content %}
+{% if message %}<div class="notice">{{ message }}</div>{% endif %}
+
+<section class="card">
+    <h2>Калибровка difficulty_coeff</h2>
+    <p class="muted help-text">
+        Для каждого упражнения взят лучший подход по e1RM. Если подход был отказным, оставь галочку.
+        Если не отказной — сними галочку и впиши, сколько повторов, скорее всего, получилось бы до отказа.
+        После сохранения считается projected e1RM, а коэффициент становится <b>константа / projected e1RM</b>,
+        то есть для двух отказных подходов <b>e1RM × difficulty_coeff = const</b>.
+    </p>
+    <form method="post" class="stacked-form">
+        <div class="form-grid form-grid--small">
+            <label>Целевая константа
+                <input type="number" name="target_constant" step="0.01" min="0.01" value="{{ format_number(target_constant) }}">
+            </label>
+        </div>
+
+        <h3>Лучшие подходы</h3>
+        <div class="table-wrap table-wrap--wide">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Упражнение</th>
+                        <th>Дата</th>
+                        <th>Вес</th>
+                        <th>Повторы</th>
+                        <th>Подходы</th>
+                        <th>e1RM</th>
+                        <th>Текущий coeff</th>
+                        <th>e1RM×coeff</th>
+                        <th>отказной</th>
+                        <th>вероятные повторы до отказа</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in calibration_rows %}
+                        <tr>
+                            <td>
+                                {{ row.exercise }}
+                                <input type="hidden" name="exercise_name" value="{{ row.exercise }}">
+                                <input type="hidden" name="weight" value="{{ row.weight }}">
+                                <input type="hidden" name="actual_reps" value="{{ row.reps }}">
+                            </td>
+                            <td>{{ format_date(row.date) }}</td>
+                            <td>{{ format_number(row.weight) }}</td>
+                            <td>{{ format_number(row.reps) }}</td>
+                            <td>{{ format_number(row.sets) }}</td>
+                            <td>{{ format_number(row.e1rm) }}</td>
+                            <td>{{ format_number(row.difficulty_coeff, 4) }}</td>
+                            <td>{{ format_number(row.calibrated_score) }}</td>
+                            <td><input type="checkbox" name="failure__{{ loop.index0 }}" value="1" checked></td>
+                            <td><input type="number" name="possible_reps" step="0.5" min="{{ row.reps }}" value="{{ format_number(row.reps) }}"></td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="10" class="muted">Нет подходов для калибровки.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Пустые распределения по мышцам</h3>
+        <p class="muted help-text">
+            Здесь появляются упражнения, у которых сумма мышечных коэффициентов равна нулю. Обычно это новые упражнения,
+            добавленные через раздел «Тренировки». Заполни доли мышц, сумма пересчитается автоматически при сохранении.
+        </p>
+        <div class="calibration-muscles">
+            {% for row in blank_rows %}
+                {% set blank_idx = loop.index0 %}
+                <details class="details-card" open>
+                    <summary>{{ row.exercise }}</summary>
+                    <input type="hidden" name="blank_exercise_name" value="{{ row.exercise }}">
+                    <div class="muscle-grid">
+                        {% for column in muscle_cols %}
+                            <label>{{ column }}
+                                <input type="number" name="blank__{{ blank_idx }}__{{ column }}" step="0.01" value="{{ row[column] if column in row else 0 }}">
+                            </label>
+                        {% endfor %}
+                    </div>
+                </details>
+            {% else %}
+                <p class="muted">Пустых упражнений нет.</p>
+            {% endfor %}
+        </div>
+
+        <div class="form-actions">
+            <button type="submit">Сохранить калибровку</button>
+            <a class="button button--secondary" href="{{ url_for('exercise_editor_page') }}">Назад к упражнениям</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
