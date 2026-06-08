@@ -14,7 +14,7 @@
         <span class="muted">{% if current_index is not none %}{{ current_index + 1 }}/{{ dates_count }}{% else %}новая дата{% endif %}</span>
     </div>
 
-    <form method="post">
+    <form method="post" id="delete-training-form">
         <input type="hidden" name="action" value="delete">
         <input type="hidden" name="date" value="{{ selected_date_html }}">
         <div class="table-wrap">
@@ -75,4 +75,39 @@
         </div>
     </form>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+    const deleteForm = document.getElementById('delete-training-form');
+    const addForm = document.getElementById('add-training-form');
+    if (!deleteForm || !addForm) {
+        return;
+    }
+    deleteForm.addEventListener('submit', function () {
+        ['form_date', 'form_exercise', 'form_new_exercise', 'form_bulk'].forEach(function (name) {
+            deleteForm.querySelectorAll('input[name="' + name + '"]').forEach(function (item) {
+                item.remove();
+            });
+        });
+        const mapping = [
+            ['date', 'form_date'],
+            ['exercise', 'form_exercise'],
+            ['new_exercise', 'form_new_exercise'],
+            ['bulk', 'form_bulk'],
+        ];
+        mapping.forEach(function (pair) {
+            const source = addForm.querySelector('[name="' + pair[0] + '"]');
+            if (!source) {
+                return;
+            }
+            const hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = pair[1];
+            hidden.value = source.value;
+            deleteForm.appendChild(hidden);
+        });
+    });
+}());
+</script>
 {% endblock %}

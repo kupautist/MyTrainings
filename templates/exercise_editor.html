@@ -3,6 +3,7 @@
 {% if message %}<div class="notice">{{ message }}</div>{% endif %}
 
 <section class="card">
+    <div class="toolbar toolbar--wrap">
     <form method="get" class="toolbar__form">
         <label>Загрузить упражнение</label>
         <select name="exercise">
@@ -10,6 +11,8 @@
         </select>
         <button type="submit">Открыть</button>
     </form>
+    <a class="button" href="{{ url_for('exercise_calibration_page') }}">Откалибровать</a>
+    </div>
 </section>
 
 <section class="card">

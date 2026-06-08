@@ -58,6 +58,18 @@ class TrainingRowInput:
     date: pd.Timestamp
 
 
+@dataclass(frozen=True)
+class CalibrationRow:
+    exercise: str
+    date: pd.Timestamp
+    sets: float
+    weight: float
+    reps: float
+    e1rm: float
+    difficulty_coeff: float
+    calibrated_score: float
+
+
 def clean_names(values: Iterable[object]) -> list[str]:
     result: list[str] = []
     for value in values:
@@ -300,6 +312,177 @@ def save_exercise_row(
 
     return df, action
 
+
+
+
+def blank_exercise_row(exercises: pd.DataFrame, name: str, *, difficulty_coeff: float = 1.0) -> dict[str, object]:
+    """Build a zero-muscle exercise row compatible with the current exercises.csv schema."""
+    row: dict[str, object] = {}
+    for column in exercises.columns:
+        if column == 'exercise':
+            row[column] = name.strip()
+        elif column == 'difficulty_coeff':
+            row[column] = float(difficulty_coeff)
+        else:
+            row[column] = 0.0
+    if 'sum' in row:
+        row['sum'] = 0.0
+    return row
+
+
+def ensure_exercise_rows(
+    exercises: pd.DataFrame,
+    exercise_names: Iterable[object],
+    *,
+    difficulty_coeff: float = 1.0,
+) -> tuple[pd.DataFrame, list[str]]:
+    """Add blank rows for exercises absent from exercises.csv."""
+    df = exercises.copy()
+    if 'exercise' not in df.columns:
+        raise ValueError('В exercises.csv нет колонки exercise.')
+
+    existing = {
+        str(value).strip().lower()
+        for value in df['exercise'].tolist()
+        if str(value).strip() and str(value).strip().lower() != 'nan'
+    }
+    added: list[str] = []
+    for name in clean_names(exercise_names):
+        key = name.strip().lower()
+        if not key or key in existing:
+            continue
+        df.loc[len(df)] = blank_exercise_row(df, name, difficulty_coeff=difficulty_coeff)
+        existing.add(key)
+        added.append(name)
+
+    return df, added
+
+
+def best_e1rm_rows_by_exercise(trainings: pd.DataFrame) -> pd.DataFrame:
+    df = normalize_trainings(trainings)
+    if df.empty:
+        return pd.DataFrame(columns=['exercise', 'date', 'sets', 'weight', 'reps', 'e1rm'])
+
+    df = df.dropna(subset=['exercise', 'date']).copy()
+    df['exercise'] = df['exercise'].astype(str).str.strip()
+    df['weight'] = pd.to_numeric(df['weight'], errors='coerce')
+    df['reps'] = pd.to_numeric(df['reps'], errors='coerce')
+    df['sets'] = pd.to_numeric(df.get('sets', 1), errors='coerce').fillna(1.0)
+    df['e1rm'] = pd.to_numeric(df.get('e1rm'), errors='coerce')
+    df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.normalize()
+    df = df.dropna(subset=['exercise', 'date', 'weight', 'reps', 'e1rm'])
+    df = df[(df['exercise'].ne('')) & (df['exercise'].str.lower().ne('nan'))]
+    df = df[(df['weight'] > 0) & (df['reps'] > 0) & (df['e1rm'] > 0)]
+    if df.empty:
+        return pd.DataFrame(columns=['exercise', 'date', 'sets', 'weight', 'reps', 'e1rm'])
+
+    sort_cols = ['exercise', 'e1rm', 'weight', 'reps', 'date', 'sets']
+    ascending = [True, False, False, False, False, False]
+    if '_row_id' in df.columns:
+        sort_cols.append('_row_id')
+        ascending.append(False)
+    best = df.sort_values(sort_cols, ascending=ascending).drop_duplicates('exercise', keep='first')
+    return best[['exercise', 'date', 'sets', 'weight', 'reps', 'e1rm']].sort_values('exercise').reset_index(drop=True)
+
+
+def calibration_constant(trainings: pd.DataFrame, exercises: pd.DataFrame) -> float:
+    best = best_e1rm_rows_by_exercise(trainings)
+    if best.empty or exercises.empty or 'exercise' not in exercises.columns:
+        return 100.0
+    ex = exercises.copy()
+    ex['exercise'] = ex['exercise'].astype(str).str.strip()
+    if 'difficulty_coeff' not in ex.columns:
+        ex['difficulty_coeff'] = 1.0
+    merged = best.merge(ex[['exercise', 'difficulty_coeff']], on='exercise', how='left')
+    merged['difficulty_coeff'] = pd.to_numeric(merged['difficulty_coeff'], errors='coerce')
+    scores = pd.to_numeric(merged['e1rm'], errors='coerce') * merged['difficulty_coeff']
+    scores = scores.replace([np.inf, -np.inf], np.nan).dropna()
+    scores = scores[scores > 0]
+    if scores.empty:
+        return 100.0
+    return float(scores.median())
+
+
+def build_calibration_rows(trainings: pd.DataFrame, exercises: pd.DataFrame) -> list[CalibrationRow]:
+    best = best_e1rm_rows_by_exercise(trainings)
+    if best.empty:
+        return []
+
+    ex = exercises.copy()
+    ex['exercise'] = ex['exercise'].astype(str).str.strip() if 'exercise' in ex.columns else ''
+    if 'difficulty_coeff' not in ex.columns:
+        ex['difficulty_coeff'] = 1.0
+    difficulty = ex[['exercise', 'difficulty_coeff']].drop_duplicates('exercise', keep='first')
+    merged = best.merge(difficulty, on='exercise', how='left')
+    merged['difficulty_coeff'] = pd.to_numeric(merged['difficulty_coeff'], errors='coerce').fillna(1.0)
+    rows: list[CalibrationRow] = []
+    for _, row in merged.iterrows():
+        e1rm = float(row['e1rm'])
+        difficulty_coeff = float(row['difficulty_coeff'])
+        rows.append(
+            CalibrationRow(
+                exercise=str(row['exercise']),
+                date=pd.Timestamp(row['date']).normalize(),
+                sets=float(row['sets']),
+                weight=float(row['weight']),
+                reps=float(row['reps']),
+                e1rm=e1rm,
+                difficulty_coeff=difficulty_coeff,
+                calibrated_score=e1rm * difficulty_coeff,
+            )
+        )
+    return rows
+
+
+def empty_muscle_exercise_names(exercises: pd.DataFrame) -> list[str]:
+    if exercises.empty or 'exercise' not in exercises.columns:
+        return []
+    muscle_cols = exercise_muscle_columns(exercises)
+    if not muscle_cols:
+        return []
+    muscle_values = exercises[muscle_cols].apply(pd.to_numeric, errors='coerce').fillna(0.0)
+    sums = muscle_values.sum(axis=1)
+    mask = sums <= 0.0
+    return clean_names(exercises.loc[mask, 'exercise'].tolist())
+
+
+def update_exercise_difficulty(
+    exercises: pd.DataFrame,
+    *,
+    exercise_name: str,
+    difficulty_coeff: float,
+) -> pd.DataFrame:
+    df = exercises.copy()
+    if 'exercise' not in df.columns or 'difficulty_coeff' not in df.columns:
+        raise ValueError('В exercises.csv должны быть колонки exercise и difficulty_coeff.')
+    mask = df['exercise'].astype(str).str.strip().str.lower() == exercise_name.strip().lower()
+    if not mask.any():
+        df.loc[len(df)] = blank_exercise_row(df, exercise_name, difficulty_coeff=difficulty_coeff)
+        return df
+    df.loc[mask, 'difficulty_coeff'] = float(difficulty_coeff)
+    return df
+
+
+def update_exercise_muscles(
+    exercises: pd.DataFrame,
+    *,
+    exercise_name: str,
+    muscles: dict[str, float],
+) -> pd.DataFrame:
+    df = exercises.copy()
+    if 'exercise' not in df.columns:
+        raise ValueError('В exercises.csv нет колонки exercise.')
+    mask = df['exercise'].astype(str).str.strip().str.lower() == exercise_name.strip().lower()
+    if not mask.any():
+        df.loc[len(df)] = blank_exercise_row(df, exercise_name)
+        mask = df['exercise'].astype(str).str.strip().str.lower() == exercise_name.strip().lower()
+    idx = df.index[mask][0]
+    muscle_cols = exercise_muscle_columns(df)
+    for column in muscle_cols:
+        df.loc[idx, column] = float(muscles.get(column, 0.0))
+    if 'sum' in df.columns:
+        df.loc[idx, 'sum'] = float(sum(float(df.loc[idx, column]) for column in muscle_cols))
+    return df
 
 def _prepare_exercise_rows(trainings: pd.DataFrame, exercise_name: str) -> pd.DataFrame:
     df = normalize_trainings(trainings)

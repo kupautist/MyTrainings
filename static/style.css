@@ -348,3 +348,33 @@ textarea { resize: vertical; }
 .compact-actions {
     margin-top: 0;
 }
+
+.toolbar--wrap {
+    flex-wrap: wrap;
+}
+
+.form-grid--small {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 360px));
+}
+
+.table-wrap--wide {
+    max-height: 560px;
+}
+
+.details-card {
+    border: 1px solid var(--border);
+    padding: 12px;
+    margin: 12px 0;
+    background: #fff;
+}
+
+.details-card summary {
+    cursor: pointer;
+    font-weight: 800;
+    margin-bottom: 10px;
+}
+
+.calibration-muscles {
+    display: grid;
+    gap: 10px;
+}

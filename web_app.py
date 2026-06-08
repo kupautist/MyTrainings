@@ -31,15 +31,20 @@ from web_logic import (
     TRAINING_DISPLAY_COLUMNS,
     TrainingRowInput,
     append_training_rows,
+    best_e1rm_rows_by_exercise,
     build_best_performances,
+    build_calibration_rows,
     build_combined_volume_dataframe,
     build_daily_exercise_metrics,
     calendar_smooth,
+    calibration_constant,
     clean_names,
     date_values_from_frame,
     day_rows,
     delete_training_row_ids,
     display_table_rows,
+    empty_muscle_exercise_names,
+    ensure_exercise_rows,
     exercise_muscle_columns,
     exercise_options_from_data,
     format_date,
@@ -49,7 +54,10 @@ from web_logic import (
     normalize_trainings_for_editing,
     parse_bulk_line,
     parse_html_date,
+    recompute_e1rm_one,
     save_exercise_row,
+    update_exercise_difficulty,
+    update_exercise_muscles,
 )
 
 
@@ -115,6 +123,17 @@ def _training_form_state_from_request(date_value: pd.Timestamp) -> dict[str, str
         'exercise': (request.form.get('exercise') or '').strip(),
         'new_exercise': (request.form.get('new_exercise') or '').strip(),
         'bulk': request.form.get('bulk') or '',
+    }
+
+
+def _training_form_state_from_delete_request(fallback_date: pd.Timestamp) -> dict[str, str] | None:
+    if not any(name.startswith('form_') for name in request.form):
+        return None
+    return {
+        'date': html_date(parse_html_date(request.form.get('form_date'), fallback_date)),
+        'exercise': (request.form.get('form_exercise') or '').strip(),
+        'new_exercise': (request.form.get('form_new_exercise') or '').strip(),
+        'bulk': request.form.get('form_bulk') or '',
     }
 
 
@@ -465,7 +484,7 @@ def overview_page() -> str:
         {
             'endpoint': 'exercise_editor_page',
             'title': 'Упражнения',
-            'text': 'Справочник упражнений: difficulty_coeff и распределение нагрузки по маленьким мышцам.',
+            'text': 'Справочник упражнений: difficulty_coeff, распределение нагрузки по маленьким мышцам и калибровка сложности по лучшим e1RM-подходам.',
         },
         {
             'endpoint': 'best_sets_page',
@@ -507,12 +526,20 @@ def trainings_page() -> str:
     if request.method == 'POST':
         action = request.form.get('action', '')
         date_value = parse_html_date(request.form.get('date'))
+        redirect_date = date_value
+
         if action == 'add_bulk':
             session['training_form_state'] = _training_form_state_from_request(date_value)
+        elif action == 'delete':
+            copied_state = _training_form_state_from_delete_request(date_value)
+            if copied_state is not None:
+                session['training_form_state'] = copied_state
 
         try:
             if action == 'add_bulk':
                 exercise_name = (request.form.get('new_exercise') or request.form.get('exercise') or '').strip()
+                if not exercise_name:
+                    raise ValueError('Выбери упражнение или введи новое.')
                 rows: list[TrainingRowInput] = []
                 bad_lines: list[str] = []
                 for line in (request.form.get('bulk') or '').splitlines():
@@ -534,7 +561,14 @@ def trainings_page() -> str:
                         )
                 updated = append_training_rows(trainings, rows)
                 save_trainings(updated)
+
+                exercises_updated, added_exercises = ensure_exercise_rows(load_exercises(), [exercise_name])
+                if added_exercises:
+                    save_exercises(exercises_updated)
+
                 message = f'Добавлено строк: {len(rows)}'
+                if added_exercises:
+                    message += f'. Новое упражнение добавлено в справочник: {added_exercises[0]}'
                 if bad_lines:
                     message += f'. Не распарсилось: {bad_lines}'
 
@@ -547,7 +581,7 @@ def trainings_page() -> str:
         except Exception as exc:  # noqa: BLE001 - выводим ошибку в интерфейс, не роняя сайт
             message = f'Ошибка: {exc}'
 
-        return redirect(url_for('trainings_page', date=html_date(date_value), message=message))
+        return redirect(url_for('trainings_page', date=html_date(redirect_date), message=message))
 
     dates_desc = list(reversed(date_values_from_frame(trainings)))
     selected_date = parse_html_date(request.args.get('date'), dates_desc[0] if dates_desc else pd.Timestamp.today())
@@ -566,7 +600,7 @@ def trainings_page() -> str:
     form_state = _training_form_state_for_render(
         selected_date=selected_date,
         exercises=exercises,
-        keep_previous=bool(message) and not message.startswith('Удалено'),
+        keep_previous=bool(message) or bool(session.get('training_form_state')), 
     )
     return render_template(
         'trainings.html',
@@ -591,8 +625,9 @@ def exercise_editor_page() -> str:
     ensure_directories()
     message = request.args.get('message', '')
     exercises_df = load_exercises()
+    trainings = normalize_trainings_for_editing(load_trainings())
     muscle_cols = exercise_muscle_columns(exercises_df)
-    exercise_names = clean_names(exercises_df['exercise'].tolist()) if 'exercise' in exercises_df.columns else []
+    exercise_names = exercise_options_from_data(trainings, exercises_df)
 
     selected_name = request.args.get('exercise', exercise_names[0] if exercise_names else '')
     selected_row: dict[str, object] | None = None
@@ -631,6 +666,91 @@ def exercise_editor_page() -> str:
         selected_name=selected_name,
         selected_row=selected_row,
         muscle_cols=muscle_cols,
+    )
+
+
+@app.route('/exercises/calibrate', methods=['GET', 'POST'])
+def exercise_calibration_page() -> str:
+    ensure_directories()
+    message = request.args.get('message', '')
+    trainings = normalize_trainings_for_editing(load_trainings())
+    exercises_df = load_exercises()
+
+    # Новые упражнения из тренировок сразу подтягиваем в рабочую таблицу как пустые строки.
+    exercises_df, added_names = ensure_exercise_rows(exercises_df, trainings.get('exercise', pd.Series(dtype=object)).tolist())
+    muscle_cols = exercise_muscle_columns(exercises_df)
+    constant_default = calibration_constant(trainings, exercises_df)
+
+    if request.method == 'POST':
+        try:
+            target_constant = _float_form('target_constant', constant_default)
+            if target_constant <= 0:
+                raise ValueError('Константа должна быть больше нуля.')
+
+            names = request.form.getlist('exercise_name')
+            weights = request.form.getlist('weight')
+            actual_reps = request.form.getlist('actual_reps')
+            possible_reps = request.form.getlist('possible_reps')
+            updated = exercises_df.copy()
+            updated_count = 0
+
+            for idx, name in enumerate(names):
+                clean_name = name.strip()
+                if not clean_name:
+                    continue
+                weight = float(weights[idx].replace(',', '.'))
+                actual = float(actual_reps[idx].replace(',', '.'))
+                possible_raw = possible_reps[idx].replace(',', '.').strip()
+                failure = request.form.get(f'failure__{idx}') == '1'
+                projected_reps = actual if failure or not possible_raw else float(possible_raw)
+                projected_reps = max(projected_reps, actual)
+                projected_e1rm = recompute_e1rm_one(weight, projected_reps)
+                if not np.isfinite(projected_e1rm) or projected_e1rm <= 0:
+                    continue
+                updated = update_exercise_difficulty(
+                    updated,
+                    exercise_name=clean_name,
+                    difficulty_coeff=target_constant / projected_e1rm,
+                )
+                updated_count += 1
+
+            blank_names = request.form.getlist('blank_exercise_name')
+            for blank_idx, name in enumerate(blank_names):
+                clean_name = name.strip()
+                if not clean_name:
+                    continue
+                muscles = {
+                    column: _float_form(f'blank__{blank_idx}__{column}', 0.0)
+                    for column in muscle_cols
+                }
+                updated = update_exercise_muscles(updated, exercise_name=clean_name, muscles=muscles)
+
+            save_exercises(updated)
+            message = f'Калибровка сохранена. Обновлено коэффициентов: {updated_count}.'
+            if added_names:
+                message += f' Добавлены пустые упражнения: {", ".join(added_names)}.'
+            return redirect(url_for('exercise_calibration_page', message=message))
+        except Exception as exc:  # noqa: BLE001
+            message = f'Ошибка: {exc}'
+
+    calibration_rows = build_calibration_rows(trainings, exercises_df)
+    blank_names = empty_muscle_exercise_names(exercises_df)
+    blank_rows = []
+    for name in blank_names:
+        mask = exercises_df['exercise'].astype(str).str.strip().str.lower() == name.strip().lower()
+        row = exercises_df.loc[mask].iloc[0].to_dict() if mask.any() else {'exercise': name}
+        blank_rows.append(row)
+
+    return render_template(
+        'exercise_calibration.html',
+        active='exercise_editor_page',
+        title='Калибровка упражнений',
+        message=message,
+        calibration_rows=calibration_rows,
+        target_constant=constant_default,
+        muscle_cols=muscle_cols,
+        blank_rows=blank_rows,
+        added_names=added_names,
     )
 
 
