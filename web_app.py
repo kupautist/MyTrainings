@@ -37,6 +37,7 @@ from web_logic import (
     build_combined_volume_dataframe,
     build_daily_exercise_metrics,
     calendar_smooth,
+    calibration_choice_row,
     calibration_constant,
     clean_names,
     date_values_from_frame,
@@ -51,12 +52,15 @@ from web_logic import (
     format_ddmmyyyy,
     format_number,
     html_date,
+    load_calibration_choices,
     normalize_trainings_for_editing,
     parse_bulk_line,
     parse_html_date,
     recompute_e1rm_one,
+    save_calibration_choices,
     save_exercise_row,
     update_exercise_difficulty,
+    upsert_calibration_choices,
     update_exercise_muscles,
 )
 
@@ -452,6 +456,7 @@ def inject_globals() -> dict[str, object]:
         'format_number': format_number,
         'format_date': format_date,
         'format_ddmmyyyy': format_ddmmyyyy,
+        'html_date': html_date,
     }
 
 
@@ -678,7 +683,11 @@ def exercise_calibration_page() -> str:
 
     # Новые упражнения из тренировок сразу подтягиваем в рабочую таблицу как пустые строки.
     exercises_df, added_names = ensure_exercise_rows(exercises_df, trainings.get('exercise', pd.Series(dtype=object)).tolist())
+    if added_names:
+        save_exercises(exercises_df)
+
     muscle_cols = exercise_muscle_columns(exercises_df)
+    calibration_choices = load_calibration_choices()
     constant_default = calibration_constant(trainings, exercises_df)
 
     if request.method == 'POST':
@@ -688,18 +697,26 @@ def exercise_calibration_page() -> str:
                 raise ValueError('Константа должна быть больше нуля.')
 
             names = request.form.getlist('exercise_name')
+            dates = request.form.getlist('date')
+            sets_values = request.form.getlist('sets')
             weights = request.form.getlist('weight')
             actual_reps = request.form.getlist('actual_reps')
+            actual_e1rms = request.form.getlist('actual_e1rm')
             possible_reps = request.form.getlist('possible_reps')
             updated = exercises_df.copy()
             updated_count = 0
+            choice_rows: list[dict[str, object]] = []
 
             for idx, name in enumerate(names):
                 clean_name = name.strip()
                 if not clean_name:
                     continue
+
                 weight = float(weights[idx].replace(',', '.'))
                 actual = float(actual_reps[idx].replace(',', '.'))
+                sets = float(sets_values[idx].replace(',', '.')) if idx < len(sets_values) else 1.0
+                actual_e1rm_raw = actual_e1rms[idx].replace(',', '.').strip() if idx < len(actual_e1rms) else ''
+                actual_e1rm = float(actual_e1rm_raw) if actual_e1rm_raw else recompute_e1rm_one(weight, actual)
                 possible_raw = possible_reps[idx].replace(',', '.').strip()
                 failure = request.form.get(f'failure__{idx}') == '1'
                 projected_reps = actual if failure or not possible_raw else float(possible_raw)
@@ -707,10 +724,25 @@ def exercise_calibration_page() -> str:
                 projected_e1rm = recompute_e1rm_one(weight, projected_reps)
                 if not np.isfinite(projected_e1rm) or projected_e1rm <= 0:
                     continue
+
                 updated = update_exercise_difficulty(
                     updated,
                     exercise_name=clean_name,
                     difficulty_coeff=target_constant / projected_e1rm,
+                )
+                choice_rows.append(
+                    calibration_choice_row(
+                        exercise=clean_name,
+                        date=dates[idx] if idx < len(dates) else pd.Timestamp.today(),
+                        sets=sets,
+                        weight=weight,
+                        reps=actual,
+                        e1rm=actual_e1rm,
+                        failure=failure,
+                        possible_reps=projected_reps,
+                        projected_e1rm=projected_e1rm,
+                        target_constant=target_constant,
+                    )
                 )
                 updated_count += 1
 
@@ -726,6 +758,8 @@ def exercise_calibration_page() -> str:
                 updated = update_exercise_muscles(updated, exercise_name=clean_name, muscles=muscles)
 
             save_exercises(updated)
+            calibration_choices = upsert_calibration_choices(calibration_choices, choice_rows)
+            save_calibration_choices(calibration_choices)
             message = f'Калибровка сохранена. Обновлено коэффициентов: {updated_count}.'
             if added_names:
                 message += f' Добавлены пустые упражнения: {", ".join(added_names)}.'
@@ -733,7 +767,8 @@ def exercise_calibration_page() -> str:
         except Exception as exc:  # noqa: BLE001
             message = f'Ошибка: {exc}'
 
-    calibration_rows = build_calibration_rows(trainings, exercises_df)
+    calibration_choices = load_calibration_choices()
+    calibration_rows = build_calibration_rows(trainings, exercises_df, calibration_choices)
     blank_names = empty_muscle_exercise_names(exercises_df)
     blank_rows = []
     for name in blank_names:
@@ -752,7 +787,6 @@ def exercise_calibration_page() -> str:
         blank_rows=blank_rows,
         added_names=added_names,
     )
-
 
 @app.route('/best-sets')
 def best_sets_page() -> str:

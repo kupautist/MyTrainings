@@ -4,10 +4,15 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment="Калибровка упражнений">
+    <list default="true" id="af3446f3-a988-4922-806a-34bc4efc86ce" name="Changes" comment="Data up to date">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data/exercises.csv" beforeDir="false" afterPath="$PROJECT_DIR$/data/exercises.csv" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/data/trainings.csv" beforeDir="false" afterPath="$PROJECT_DIR$/data/trainings.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/static/style.css" beforeDir="false" afterPath="$PROJECT_DIR$/static/style.css" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/templates/exercise_calibration.html" beforeDir="false" afterPath="$PROJECT_DIR$/templates/exercise_calibration.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web_app.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_app.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/web_logic.py" beforeDir="false" afterPath="$PROJECT_DIR$/web_logic.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -253,7 +258,15 @@
       <option name="project" value="LOCAL" />
       <updated>1780934177574</updated>
     </task>
-    <option name="localTasksCounter" value="12" />
+    <task id="LOCAL-00012" summary="Data up to date">
+      <option name="closed" value="true" />
+      <created>1787654176423</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1787654176423</updated>
+    </task>
+    <option name="localTasksCounter" value="13" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -264,8 +277,8 @@
     <MESSAGE value="File for tracking each exercise individually" />
     <MESSAGE value="File for tracking each exersize individually" />
     <MESSAGE value="exercise progress via tkinter" />
-    <MESSAGE value="Data up to date" />
     <MESSAGE value="Калибровка упражнений" />
-    <option name="LAST_COMMIT_MESSAGE" value="Калибровка упражнений" />
+    <MESSAGE value="Data up to date" />
+    <option name="LAST_COMMIT_MESSAGE" value="Data up to date" />
   </component>
 </project>

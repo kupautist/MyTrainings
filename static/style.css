@@ -378,3 +378,7 @@ textarea { resize: vertical; }
     display: grid;
     gap: 10px;
 }
+.small-text {
+    font-size: 12px;
+    margin-top: 4px;
+}

@@ -7,11 +7,25 @@ from typing import Final, Iterable, Sequence
 import numpy as np
 import pandas as pd
 
-from data_io import normalize_trainings, recompute_e1rm
+from data_io import CSV_ENCODING, DATA_DIR, normalize_trainings, recompute_e1rm
 
 
 TRAINING_DISPLAY_COLUMNS: Final[tuple[str, ...]] = ('exercise', 'e1rm', 'sets', 'weight', 'reps')
 EXERCISE_REQUIRED_COLUMNS: Final[set[str]] = {'exercise', 'difficulty_coeff', 'sum'}
+CALIBRATION_CSV = DATA_DIR / 'exercise_calibration.csv'
+CALIBRATION_COLUMNS: Final[tuple[str, ...]] = (
+    'exercise',
+    'date',
+    'sets',
+    'weight',
+    'reps',
+    'e1rm',
+    'failure',
+    'possible_reps',
+    'projected_e1rm',
+    'target_constant',
+    'updated_at',
+)
 
 
 @dataclass(frozen=True)
@@ -68,6 +82,10 @@ class CalibrationRow:
     e1rm: float
     difficulty_coeff: float
     calibrated_score: float
+    failure: bool = True
+    possible_reps: float | None = None
+    uses_saved_choice: bool = False
+    has_new_best_since_saved: bool = False
 
 
 def clean_names(values: Iterable[object]) -> list[str]:
@@ -128,6 +146,129 @@ def date_values_from_frame(df: pd.DataFrame) -> list[pd.Timestamp]:
         return []
     dates = pd.to_datetime(df['date'], errors='coerce').dropna().dt.normalize().unique()
     return [pd.Timestamp(date).normalize() for date in sorted(dates)]
+
+def empty_calibration_choices() -> pd.DataFrame:
+    return pd.DataFrame(columns=list(CALIBRATION_COLUMNS))
+
+
+def load_calibration_choices(path: object = CALIBRATION_CSV) -> pd.DataFrame:
+    csv_path = pd.io.common.stringify_path(path)
+    try:
+        df = pd.read_csv(csv_path, encoding=CSV_ENCODING)
+    except FileNotFoundError:
+        return empty_calibration_choices()
+
+    for column in CALIBRATION_COLUMNS:
+        if column not in df.columns:
+            df[column] = np.nan
+
+    df = df.loc[:, list(CALIBRATION_COLUMNS)].copy()
+    df['exercise'] = df['exercise'].astype(str).str.strip()
+    df = df[df['exercise'].ne('') & df['exercise'].str.lower().ne('nan')]
+    df['date'] = pd.to_datetime(df['date'], errors='coerce').dt.normalize()
+    for column in ('sets', 'weight', 'reps', 'e1rm', 'possible_reps', 'projected_e1rm', 'target_constant'):
+        df[column] = pd.to_numeric(df[column], errors='coerce')
+    df['failure'] = df['failure'].map(_boolish).fillna(False).astype(bool)
+    df['updated_at'] = pd.to_datetime(df['updated_at'], errors='coerce')
+    return df
+
+
+def save_calibration_choices(df: pd.DataFrame, path: object = CALIBRATION_CSV) -> None:
+    csv_path = DATA_DIR / 'exercise_calibration.csv' if path == CALIBRATION_CSV else path
+    output_path = pd.io.common.stringify_path(csv_path)
+    result = df.copy()
+    for column in CALIBRATION_COLUMNS:
+        if column not in result.columns:
+            result[column] = np.nan
+    result = result.loc[:, list(CALIBRATION_COLUMNS)].copy()
+    if not result.empty:
+        result['date'] = pd.to_datetime(result['date'], errors='coerce').dt.strftime('%Y-%m-%d')
+        result['updated_at'] = pd.to_datetime(result['updated_at'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+        result['failure'] = result['failure'].astype(bool).astype(int)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    result.to_csv(output_path, index=False, encoding=CSV_ENCODING)
+
+
+def upsert_calibration_choices(existing: pd.DataFrame, new_rows: Sequence[dict[str, object]]) -> pd.DataFrame:
+    base = load_calibration_choices() if existing is None else existing.copy()
+    if base.empty:
+        base = empty_calibration_choices()
+    rows_df = pd.DataFrame(new_rows, columns=list(CALIBRATION_COLUMNS))
+    if rows_df.empty:
+        return base
+    for column in CALIBRATION_COLUMNS:
+        if column not in rows_df.columns:
+            rows_df[column] = np.nan
+    rows_df = rows_df.loc[:, list(CALIBRATION_COLUMNS)].copy()
+    rows_df['exercise'] = rows_df['exercise'].astype(str).str.strip()
+    keys = rows_df['exercise'].str.lower().tolist()
+    if not base.empty and 'exercise' in base.columns:
+        base = base[~base['exercise'].astype(str).str.strip().str.lower().isin(keys)].copy()
+    if base.empty:
+        return rows_df.reset_index(drop=True)
+    return pd.concat([base, rows_df], ignore_index=True)
+
+
+def _latest_calibration_by_exercise(calibration_choices: pd.DataFrame | None) -> dict[str, pd.Series]:
+    if calibration_choices is None or calibration_choices.empty:
+        return {}
+    state = calibration_choices.copy()
+    state['exercise_key'] = state['exercise'].astype(str).str.strip().str.lower()
+    state = state[state['exercise_key'].ne('') & state['exercise_key'].ne('nan')]
+    if state.empty:
+        return {}
+    state['updated_at'] = pd.to_datetime(state.get('updated_at'), errors='coerce')
+    state = state.sort_values(['exercise_key', 'updated_at'], ascending=[True, False], na_position='last')
+    latest = state.drop_duplicates('exercise_key', keep='first')
+    return {str(row['exercise_key']): row for _, row in latest.iterrows()}
+
+
+def _boolish(value: object) -> bool | None:
+    if pd.isna(value):
+        return None
+    if isinstance(value, bool):
+        return value
+    text = str(value).strip().lower()
+    if text in {'1', '1.0', 'true', 'yes', 'y', 'да', 'on'}:
+        return True
+    if text in {'0', '0.0', 'false', 'no', 'n', 'нет', 'off'}:
+        return False
+    return None
+
+
+def calibration_choice_row(
+    *,
+    exercise: str,
+    date: object,
+    sets: float,
+    weight: float,
+    reps: float,
+    e1rm: float,
+    failure: bool,
+    possible_reps: float,
+    projected_e1rm: float,
+    target_constant: float,
+) -> dict[str, object]:
+    return {
+        'exercise': exercise.strip(),
+        'date': pd.Timestamp(date).normalize(),
+        'sets': float(sets),
+        'weight': float(weight),
+        'reps': float(reps),
+        'e1rm': float(e1rm),
+        'failure': bool(failure),
+        'possible_reps': float(possible_reps),
+        'projected_e1rm': float(projected_e1rm),
+        'target_constant': float(target_constant),
+        'updated_at': pd.Timestamp.now(),
+    }
+
+
+def saved_choice_applies(saved: pd.Series, current_e1rm: float, *, tolerance: float = 1e-9) -> bool:
+    saved_e1rm = pd.to_numeric(saved.get('e1rm'), errors='coerce')
+    if pd.isna(saved_e1rm) or float(saved_e1rm) <= 0:
+        return False
+    return current_e1rm <= float(saved_e1rm) + tolerance
 
 
 def display_table_rows(df: pd.DataFrame, columns: Sequence[str]) -> list[dict[str, str]]:
@@ -403,7 +544,11 @@ def calibration_constant(trainings: pd.DataFrame, exercises: pd.DataFrame) -> fl
     return float(scores.median())
 
 
-def build_calibration_rows(trainings: pd.DataFrame, exercises: pd.DataFrame) -> list[CalibrationRow]:
+def build_calibration_rows(
+    trainings: pd.DataFrame,
+    exercises: pd.DataFrame,
+    calibration_choices: pd.DataFrame | None = None,
+) -> list[CalibrationRow]:
     best = best_e1rm_rows_by_exercise(trainings)
     if best.empty:
         return []
@@ -415,20 +560,46 @@ def build_calibration_rows(trainings: pd.DataFrame, exercises: pd.DataFrame) -> 
     difficulty = ex[['exercise', 'difficulty_coeff']].drop_duplicates('exercise', keep='first')
     merged = best.merge(difficulty, on='exercise', how='left')
     merged['difficulty_coeff'] = pd.to_numeric(merged['difficulty_coeff'], errors='coerce').fillna(1.0)
+
+    saved_by_exercise = _latest_calibration_by_exercise(calibration_choices)
     rows: list[CalibrationRow] = []
     for _, row in merged.iterrows():
+        exercise = str(row['exercise']).strip()
         e1rm = float(row['e1rm'])
+        reps = float(row['reps'])
         difficulty_coeff = float(row['difficulty_coeff'])
+        failure = True
+        possible_reps = reps
+        uses_saved_choice = False
+        has_new_best_since_saved = False
+
+        saved = saved_by_exercise.get(exercise.lower())
+        if saved is not None:
+            saved_e1rm = pd.to_numeric(saved.get('e1rm'), errors='coerce')
+            has_new_best_since_saved = not pd.isna(saved_e1rm) and e1rm > float(saved_e1rm) + 1e-9
+            if saved_choice_applies(saved, e1rm):
+                saved_failure = _boolish(saved.get('failure'))
+                saved_possible = pd.to_numeric(saved.get('possible_reps'), errors='coerce')
+                if saved_failure is not None:
+                    failure = bool(saved_failure)
+                if not pd.isna(saved_possible):
+                    possible_reps = max(float(saved_possible), reps)
+                uses_saved_choice = True
+
         rows.append(
             CalibrationRow(
-                exercise=str(row['exercise']),
+                exercise=exercise,
                 date=pd.Timestamp(row['date']).normalize(),
                 sets=float(row['sets']),
                 weight=float(row['weight']),
-                reps=float(row['reps']),
+                reps=reps,
                 e1rm=e1rm,
                 difficulty_coeff=difficulty_coeff,
                 calibrated_score=e1rm * difficulty_coeff,
+                failure=failure,
+                possible_reps=possible_reps,
+                uses_saved_choice=uses_saved_choice,
+                has_new_best_since_saved=has_new_best_since_saved,
             )
         )
     return rows

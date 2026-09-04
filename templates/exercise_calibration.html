@@ -40,8 +40,11 @@
                             <td>
                                 {{ row.exercise }}
                                 <input type="hidden" name="exercise_name" value="{{ row.exercise }}">
+                                <input type="hidden" name="date" value="{{ html_date(row.date) }}">
+                                <input type="hidden" name="sets" value="{{ row.sets }}">
                                 <input type="hidden" name="weight" value="{{ row.weight }}">
                                 <input type="hidden" name="actual_reps" value="{{ row.reps }}">
+                                <input type="hidden" name="actual_e1rm" value="{{ row.e1rm }}">
                             </td>
                             <td>{{ format_date(row.date) }}</td>
                             <td>{{ format_number(row.weight) }}</td>
@@ -50,8 +53,15 @@
                             <td>{{ format_number(row.e1rm) }}</td>
                             <td>{{ format_number(row.difficulty_coeff, 4) }}</td>
                             <td>{{ format_number(row.calibrated_score) }}</td>
-                            <td><input type="checkbox" name="failure__{{ loop.index0 }}" value="1" checked></td>
-                            <td><input type="number" name="possible_reps" step="0.5" min="{{ row.reps }}" value="{{ format_number(row.reps) }}"></td>
+                            <td><input type="checkbox" name="failure__{{ loop.index0 }}" value="1" {% if row.failure %}checked{% endif %}></td>
+                            <td>
+                                <input type="number" name="possible_reps" step="0.5" min="{{ row.reps }}" value="{{ format_number(row.possible_reps if row.possible_reps is not none else row.reps) }}">
+                                {% if row.has_new_best_since_saved %}
+                                    <div class="muted small-text">найден новый лучший подход</div>
+                                {% elif row.uses_saved_choice and not row.failure %}
+                                    <div class="muted small-text">сохранено с прошлой калибровки</div>
+                                {% endif %}
+                            </td>
                         </tr>
                     {% else %}
                         <tr><td colspan="10" class="muted">Нет подходов для калибровки.</td></tr>
