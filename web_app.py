@@ -52,6 +52,9 @@ from web_logic import (
     format_ddmmyyyy,
     format_number,
     html_date,
+    latest_calibration_constant,
+    current_difficulty_coeff,
+    coeff_changed,
     load_calibration_choices,
     normalize_trainings_for_editing,
     parse_bulk_line,
@@ -688,7 +691,7 @@ def exercise_calibration_page() -> str:
 
     muscle_cols = exercise_muscle_columns(exercises_df)
     calibration_choices = load_calibration_choices()
-    constant_default = calibration_constant(trainings, exercises_df)
+    constant_default = latest_calibration_constant(calibration_choices) or calibration_constant(trainings, exercises_df)
 
     if request.method == 'POST':
         try:
@@ -725,11 +728,16 @@ def exercise_calibration_page() -> str:
                 if not np.isfinite(projected_e1rm) or projected_e1rm <= 0:
                     continue
 
-                updated = update_exercise_difficulty(
-                    updated,
-                    exercise_name=clean_name,
-                    difficulty_coeff=target_constant / projected_e1rm,
-                )
+                new_coeff = target_constant / projected_e1rm
+                old_coeff = current_difficulty_coeff(updated, clean_name)
+                if coeff_changed(old_coeff, new_coeff):
+                    updated = update_exercise_difficulty(
+                        updated,
+                        exercise_name=clean_name,
+                        difficulty_coeff=new_coeff,
+                    )
+                    updated_count += 1
+
                 choice_rows.append(
                     calibration_choice_row(
                         exercise=clean_name,
@@ -744,7 +752,6 @@ def exercise_calibration_page() -> str:
                         target_constant=target_constant,
                     )
                 )
-                updated_count += 1
 
             blank_names = request.form.getlist('blank_exercise_name')
             for blank_idx, name in enumerate(blank_names):
@@ -823,10 +830,10 @@ def exercise_charts_page() -> str:
     default_exercises = exercises[:3]
     selected_exercises = _selected_from_request('exercise', default_exercises)
     selected_metrics = _selected_from_request('metric', ['raw_volume'])
-    show_points = _checkbox_bool('show_points', True)
+    show_points = _checkbox_bool('show_points', False)
     show_smooth = _checkbox_bool('show_smooth', True)
     show_mean = _checkbox_bool('show_mean', True)
-    smooth_days = max(_int_arg('smooth', 3), 0)
+    smooth_days = max(_int_arg('smooth', 9), 0)
 
     chart = plot_exercise_metrics_chart(
         daily,
@@ -881,9 +888,9 @@ def muscle_charts_page() -> str:
     groups = [column.replace(prefix, '') for column in combined.columns if column.startswith(prefix)]
     default_groups = groups if mode == 'big' else groups[:8]
     selected_groups = _selected_from_request('group', default_groups)
-    smooth_window = max(_int_arg('smooth', 3), 0)
-    show_mean = _checkbox_bool('show_mean', False)
-    show_points = _checkbox_bool('show_points', True)
+    smooth_window = max(_int_arg('smooth', 9), 0)
+    show_mean = _checkbox_bool('show_mean', True)
+    show_points = _checkbox_bool('show_points', False)
 
     chart = plot_muscle_chart(
         combined,

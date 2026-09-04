@@ -13,7 +13,7 @@
     <form method="post" class="stacked-form">
         <div class="form-grid form-grid--small">
             <label>Целевая константа
-                <input type="number" name="target_constant" step="0.01" min="0.01" value="{{ format_number(target_constant) }}">
+                <input type="number" name="target_constant" step="0.01" min="0.01" value="{{ format_number(target_constant, 8) }}">
             </label>
         </div>
 
@@ -36,7 +36,7 @@
                 </thead>
                 <tbody>
                     {% for row in calibration_rows %}
-                        <tr>
+                        <tr class="{% if row.has_new_best_since_saved %}row--new-best{% endif %}">
                             <td>
                                 {{ row.exercise }}
                                 <input type="hidden" name="exercise_name" value="{{ row.exercise }}">

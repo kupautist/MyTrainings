@@ -4,13 +4,18 @@
 
 <section class="card">
     <div class="toolbar">
-        <a class="button button--secondary" href="{{ url_for('trainings_page', date=format_date(prev_date)) if prev_date else '#' }}">← Назад</a>
+        <a class="button button--secondary" href="{{ url_for('trainings_page', date=html_date(prev_date)) if prev_date else '#' }}">← Назад</a>
         <form method="get" class="toolbar__form">
             <label>Дата</label>
-            <input type="date" name="date" value="{{ selected_date_html }}">
+            <div class="date-picker" data-date-widget>
+                <input class="date-input date-picker__display" type="text" value="{{ format_date(selected_date) }}" placeholder="дд.мм.гггг" data-date-display required>
+                <input type="hidden" name="date" value="{{ selected_date_html }}" data-date-value>
+                <button type="button" class="button button--secondary date-picker__button" data-date-button aria-label="Открыть календарь">▦</button>
+                <input class="date-picker__native" type="date" value="{{ selected_date_html }}" data-date-native tabindex="-1" aria-hidden="true">
+            </div>
             <button type="submit">Показать</button>
         </form>
-        <a class="button button--secondary" href="{{ url_for('trainings_page', date=format_date(next_date)) if next_date else '#' }}">Дальше →</a>
+        <a class="button button--secondary" href="{{ url_for('trainings_page', date=html_date(next_date)) if next_date else '#' }}">Дальше →</a>
         <span class="muted">{% if current_index is not none %}{{ current_index + 1 }}/{{ dates_count }}{% else %}новая дата{% endif %}</span>
     </div>
 
@@ -30,7 +35,15 @@
                         <tr>
                             <td><input type="checkbox" name="row_id" value="{{ row['_row_id'] }}"></td>
                             {% for column in columns %}
-                                <td>{% if column == 'exercise' %}{{ row[column] }}{% else %}{{ format_number(row[column]) }}{% endif %}</td>
+                                <td>
+                                    {% if column == 'date' %}
+                                        {{ format_date(row[column]) }}
+                                    {% elif column == 'exercise' %}
+                                        {{ row[column] }}
+                                    {% else %}
+                                        {{ format_number(row[column]) }}
+                                    {% endif %}
+                                </td>
                             {% endfor %}
                         </tr>
                     {% else %}
@@ -52,17 +65,20 @@
     <form method="post" class="stacked-form" id="add-training-form">
         <div class="form-grid">
             <label>Дата
-                <input type="date" name="date" value="{{ form_state.date }}" required>
+                <div class="date-picker" data-date-widget>
+                    <input class="date-input date-picker__display" type="text" value="{{ format_date(form_state.date) }}" placeholder="дд.мм.гггг" data-date-display required>
+                    <input type="hidden" name="date" value="{{ html_date(form_state.date) }}" data-date-value>
+                    <button type="button" class="button button--secondary date-picker__button" data-date-button aria-label="Открыть календарь">▦</button>
+                    <input class="date-picker__native" type="date" value="{{ html_date(form_state.date) }}" data-date-native tabindex="-1" aria-hidden="true">
+                </div>
             </label>
             <label>Упражнение
-                <select name="exercise">
+                <input class="exercise-search" type="text" name="exercise" list="exercise-list" value="{{ form_state.exercise }}" placeholder="начни вводить или введи новое" autocomplete="off" required>
+                <datalist id="exercise-list">
                     {% for exercise in exercises %}
-                        <option value="{{ exercise }}" {% if exercise == form_state.exercise %}selected{% endif %}>{{ exercise }}</option>
+                        <option value="{{ exercise }}"></option>
                     {% endfor %}
-                </select>
-            </label>
-            <label>Новое упражнение
-                <input type="text" name="new_exercise" value="{{ form_state.new_exercise }}" placeholder="если нет в списке">
+                </datalist>
             </label>
         </div>
 

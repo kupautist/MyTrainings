@@ -114,26 +114,58 @@ def format_number(value: object, digits: int = 2) -> str:
     return f'{number:.{digits}f}'.rstrip('0').rstrip('.')
 
 
-def format_date(value: object, fmt: str = '%Y-%m-%d') -> str:
-    if pd.isna(value):
-        return ''
-    parsed = pd.to_datetime(value, errors='coerce')
+def parse_date_value(value: object) -> pd.Timestamp | None:
+    if value is None:
+        return None
+
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+
+    if isinstance(value, pd.Timestamp):
+        parsed = value
+    else:
+        text = str(value).strip()
+        if not text:
+            return None
+
+        parsed = pd.NaT
+        for date_format in ('%Y-%m-%d', '%d.%m.%Y', '%d/%m/%Y', '%d%m%Y'):
+            parsed = pd.to_datetime(text, format=date_format, errors='coerce')
+            if not pd.isna(parsed):
+                break
+
+        if pd.isna(parsed):
+            parsed = pd.to_datetime(text, errors='coerce', dayfirst=True)
+
     if pd.isna(parsed):
-        return str(value)
-    return pd.Timestamp(parsed).strftime(fmt)
+        return None
+
+    return pd.Timestamp(parsed).normalize()
+
+
+def format_date(value: object, fmt: str = '%d.%m.%Y') -> str:
+    parsed = parse_date_value(value)
+    if parsed is None:
+        return '' if value is None or pd.isna(value) else str(value)
+    return parsed.strftime(fmt)
 
 
 def format_ddmmyyyy(value: object) -> str:
     return format_date(value, '%d%m%Y')
 
 
-def parse_html_date(value: str | None, fallback: pd.Timestamp | None = None) -> pd.Timestamp:
-    if value:
-        parsed = pd.to_datetime(value, errors='coerce')
-        if not pd.isna(parsed):
-            return pd.Timestamp(parsed).normalize()
+def parse_html_date(value: object | None, fallback: pd.Timestamp | None = None) -> pd.Timestamp:
+    parsed = parse_date_value(value)
+    if parsed is not None:
+        return parsed
+
     if fallback is not None:
-        return pd.Timestamp(fallback).normalize()
+        fallback_parsed = parse_date_value(fallback)
+        if fallback_parsed is not None:
+            return fallback_parsed
     return pd.Timestamp.today().normalize()
 
 
@@ -542,6 +574,44 @@ def calibration_constant(trainings: pd.DataFrame, exercises: pd.DataFrame) -> fl
     if scores.empty:
         return 100.0
     return float(scores.median())
+
+
+def latest_calibration_constant(calibration_choices: pd.DataFrame | None) -> float | None:
+    if calibration_choices is None or calibration_choices.empty or 'target_constant' not in calibration_choices.columns:
+        return None
+
+    choices = calibration_choices.copy()
+    choices['target_constant'] = pd.to_numeric(choices['target_constant'], errors='coerce')
+    choices = choices.replace([np.inf, -np.inf], np.nan).dropna(subset=['target_constant'])
+    choices = choices[choices['target_constant'] > 0]
+    if choices.empty:
+        return None
+
+    choices['updated_at'] = pd.to_datetime(choices.get('updated_at'), errors='coerce')
+    choices = choices.sort_values('updated_at', ascending=False, na_position='last')
+    return float(choices.iloc[0]['target_constant'])
+
+
+def current_difficulty_coeff(exercises: pd.DataFrame, exercise_name: str) -> float | None:
+    if exercises.empty or 'exercise' not in exercises.columns or 'difficulty_coeff' not in exercises.columns:
+        return None
+
+    mask = exercises['exercise'].astype(str).str.strip().str.lower() == exercise_name.strip().lower()
+    if not mask.any():
+        return None
+
+    value = pd.to_numeric(exercises.loc[mask, 'difficulty_coeff'].iloc[0], errors='coerce')
+    if pd.isna(value):
+        return None
+    return float(value)
+
+
+def coeff_changed(old_value: float | None, new_value: float, *, atol: float = 1e-6) -> bool:
+    if old_value is None or not np.isfinite(old_value):
+        return True
+    if not np.isfinite(new_value):
+        return False
+    return not bool(np.isclose(float(old_value), float(new_value), rtol=0.0, atol=atol))
 
 
 def build_calibration_rows(

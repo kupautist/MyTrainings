@@ -62,6 +62,125 @@
             end.addEventListener('input', update);
             update();
         }
+
+        function dateIsoToRu(value) {
+            const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec((value || '').trim());
+            if (!match) {
+                return value || '';
+            }
+            return match[3] + '.' + match[2] + '.' + match[1];
+        }
+
+        function dateRuToIso(value) {
+            const text = (value || '').trim();
+            let match = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(text);
+            if (match) {
+                return match[3] + '-' + match[2] + '-' + match[1];
+            }
+
+            match = /^(\d{2})(\d{2})(\d{4})$/.exec(text);
+            if (match) {
+                return match[3] + '-' + match[2] + '-' + match[1];
+            }
+
+            match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+            if (match) {
+                return text;
+            }
+
+            return '';
+        }
+
+        function isValidIsoDate(value) {
+            const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+            if (!match) {
+                return false;
+            }
+            const year = Number(match[1]);
+            const month = Number(match[2]);
+            const day = Number(match[3]);
+            const parsed = new Date(year, month - 1, day);
+            return parsed.getFullYear() === year && parsed.getMonth() === month - 1 && parsed.getDate() === day;
+        }
+
+        function initDateWidgets() {
+            document.querySelectorAll('[data-date-widget]').forEach(function (widget) {
+                const display = widget.querySelector('[data-date-display]');
+                const hidden = widget.querySelector('[data-date-value]');
+                const native = widget.querySelector('[data-date-native]');
+                const button = widget.querySelector('[data-date-button]');
+                if (!display || !hidden || !native) {
+                    return;
+                }
+
+                function setIso(iso) {
+                    if (!isValidIsoDate(iso)) {
+                        return false;
+                    }
+                    hidden.value = iso;
+                    native.value = iso;
+                    display.value = dateIsoToRu(iso);
+                    display.classList.remove('input--invalid');
+                    return true;
+                }
+
+                function syncFromDisplay() {
+                    const iso = dateRuToIso(display.value);
+                    if (setIso(iso)) {
+                        return true;
+                    }
+                    display.classList.add('input--invalid');
+                    return false;
+                }
+
+                setIso(hidden.value || native.value || dateRuToIso(display.value));
+
+                display.addEventListener('change', syncFromDisplay);
+                display.addEventListener('blur', syncFromDisplay);
+                native.addEventListener('change', function () {
+                    setIso(native.value);
+                });
+
+                if (button) {
+                    button.addEventListener('click', function () {
+                        syncFromDisplay();
+                        if (typeof native.showPicker === 'function') {
+                            native.showPicker();
+                        } else {
+                            native.focus();
+                            native.click();
+                        }
+                    });
+                }
+
+                const form = widget.closest('form');
+                if (form && !form.dataset.dateGuardReady) {
+                    form.dataset.dateGuardReady = '1';
+                    form.addEventListener('submit', function (event) {
+                        let ok = true;
+                        form.querySelectorAll('[data-date-widget]').forEach(function (item) {
+                            const itemDisplay = item.querySelector('[data-date-display]');
+                            const itemHidden = item.querySelector('[data-date-value]');
+                            const iso = dateRuToIso(itemDisplay ? itemDisplay.value : '');
+                            if (!isValidIsoDate(iso)) {
+                                ok = false;
+                                if (itemDisplay) {
+                                    itemDisplay.classList.add('input--invalid');
+                                }
+                            } else if (itemHidden) {
+                                itemHidden.value = iso;
+                            }
+                        });
+                        if (!ok) {
+                            event.preventDefault();
+                            alert('Дата должна быть в формате дд.мм.гггг');
+                        }
+                    });
+                }
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initDateWidgets);
     </script>
     {% block scripts %}{% endblock %}
 </body>
